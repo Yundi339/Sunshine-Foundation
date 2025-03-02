@@ -558,7 +558,13 @@ namespace display_device {
     }
 
     // 需要准备VDD的场景
-    if (config.preferUseVdd || session.use_vdd || display_device::get_display_friendly_name(config.output_name).empty()) {
+    // 检查是否需要使用VDD：用户配置启用、会话要求、输出设备不存在或已是VDD设备
+    const auto display_name = display_device::get_display_friendly_name(config.output_name);
+    if (config.preferUseVdd || session.use_vdd || display_name.empty() || display_name == zako_name) {
+      BOOST_LOG(debug) << "需要准备VDD环境，原因: " 
+                       << (config.preferUseVdd ? "用户配置" : 
+                          (session.use_vdd ? "会话要求" : 
+                          (display_name.empty() ? "输出设备不存在" : "已是VDD设备")));
       display_device::session_t::get().prepare_vdd(parsed_config, session);
     }
 
