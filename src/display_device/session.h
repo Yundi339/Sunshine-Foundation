@@ -2,9 +2,9 @@
 
 // standard includes
 #include <mutex>
-
 // local includes
 #include "settings.h"
+#include "vdd_utils.h"
 
 namespace display_device {
 
@@ -83,7 +83,7 @@ namespace display_device {
      * ```
      */
     void
-    configure_display(const config::video_t &config, const rtsp_stream::launch_session_t &session, bool is_reconfigure);
+    configure_display(const config::video_t &config, const rtsp_stream::launch_session_t &session, bool is_reconfigure = false);
 
     /**
      * @brief Revert the display configuration and restore the previous state.
@@ -138,15 +138,51 @@ namespace display_device {
     void
     reset_persistence();
 
+    /**
+     * @brief Create VDD monitor
+     */
+    bool
+    create_vdd_monitor();
+
+    /**
+     * @brief Destroy VDD monitor
+     */
+    bool
+    destroy_vdd_monitor();
+
+    /**
+     * @brief Enable VDD driver
+     */
     void
     enable_vdd();
 
+    /**
+     * @brief Disable VDD driver
+     */
     void
     disable_vdd();
 
+    /**
+     * @brief Disable and enable VDD driver
+     */
     void
     disable_enable_vdd();
 
+    /**
+     * @brief Toggle display power
+     */
+    void
+    toggle_display_power();
+
+    /**
+     * @brief Check if display is on
+     */
+    bool
+    is_display_on();
+
+    /**
+     * @brief Prepares VDD for use
+     */
     void
     prepare_vdd(parsed_config_t &config, const rtsp_stream::launch_session_t &session);
 
@@ -198,6 +234,9 @@ namespace display_device {
      * @warning MUST BE declared after the settings and mutex members to ensure proper destruction order!.
      */
     std::unique_ptr<StateRetryTimer> timer;
+
+    void
+    update_vdd_resolution(const parsed_config_t &config, const vdd_utils::VddSettings &vdd_settings);
   };
 
 }  // namespace display_device

@@ -9,6 +9,7 @@
 #include "src/display_device/to_string.h"
 #include "src/globals.h"
 #include "src/logging.h"
+#include "src/rtsp.h"
 #include "windows_utils.h"
 
 namespace display_device {
@@ -562,7 +563,7 @@ namespace display_device {
   }
 
   settings_t::apply_result_t
-  settings_t::apply_config(const parsed_config_t &config) {
+  settings_t::apply_config(const parsed_config_t &config, const rtsp_stream::launch_session_t &session) {
     const auto do_apply_config { [this](const parsed_config_t &config) -> settings_t::apply_result_t {
       bool failed_while_reverting_settings { false };
       const boost::optional<topology_pair_t> previously_configured_topology { persistent_data ? boost::make_optional(persistent_data->topology) : boost::none };
@@ -693,6 +694,17 @@ namespace display_device {
         BOOST_LOG(debug) << "Releasing captured audio sink";
         audio_data = nullptr;
       }
+
+      if (config.change_hdr_state) {
+        std::thread { [&client_name = session.client_name]() {
+          if (!display_device::apply_hdr_profile(client_name)) {
+            BOOST_LOG(warning) << "Failed to apply HDR profile for client: " << client_name << "retrying later...";
+            std::this_thread::sleep_for(2s);
+            display_device::apply_hdr_profile(client_name);
+          }
+        } }
+          .detach();
+      }
     }
 
     if (!result) {
@@ -736,19 +748,31 @@ namespace display_device {
       BOOST_LOG(info) << "Display device configuration reverted.";
     }
 
-    const auto devices { display_device::enum_available_devices() };
-    const auto vdd_devices { display_device::find_device_by_friendlyname(zako_name) };
-
+    auto &session = display_device::session_t::get();
+    
+    // 检查是否需回退虚拟显示设备
     if (config::video.preferUseVdd) {
-      if (!vdd_devices.empty() && devices.size() > 1) {
-        Sleep(777);
-        BOOST_LOG(info) << "preferUseVdd && devices.size() > 1, turning off vdd";
-        display_device::session_t::get().disable_vdd();
+      // 如果启用了VDD偏好且存在多个显示器，则关闭VDD
+      if (display_device::enum_available_devices().size() > 1 && session.is_display_on()) {
+        BOOST_LOG(info) << "检测到多显示器且VDD已启用，执行关闭操作";
+        session.destroy_vdd_monitor();
       }
-    }
-    else if (vdd_devices.empty()) {
-      BOOST_LOG(info) << "Vdd resident so turning on it";
-      display_device::session_t::get().enable_vdd();
+    } 
+    else {
+      // 如果未启用VDD偏好但指定显示器不存在，就创建Zako Monitor
+      const auto display_name = display_device::get_display_friendly_name(config::video.output_name);
+      if (display_name.empty()) {
+        BOOST_LOG(info) << "VDD偏好未启用且指定显示器不存在，尝试创建显示器";
+        session.create_vdd_monitor();
+        
+        // 等待显示器创建完成，后续检测需要
+        constexpr int max_attempts = 5;
+        constexpr auto wait_time = std::chrono::milliseconds(233);
+        
+        for (int i = 0; i < max_attempts && !session.is_display_on(); ++i) {
+          std::this_thread::sleep_for(wait_time);
+        }
+      }
     }
 
     return true;

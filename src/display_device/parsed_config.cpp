@@ -557,19 +557,15 @@ namespace display_device {
       return boost::none;
     }
 
-    if (config.preferUseVdd || session.use_vdd || display_device::get_display_friendly_name(config.output_name) == zako_name) {
+    // 需要准备VDD的场景
+    // 检查是否需要使用VDD：用户配置启用、会话要求、输出设备不存在或已是VDD设备
+    const auto display_name = display_device::get_display_friendly_name(config.output_name);
+    if (config.preferUseVdd || session.use_vdd || display_name.empty() || display_name == zako_name) {
+      BOOST_LOG(debug) << "需要准备VDD环境，原因: " 
+                       << (config.preferUseVdd ? "用户配置" : 
+                          (session.use_vdd ? "会话要求" : 
+                          (display_name.empty() ? "输出设备不存在" : "已是VDD设备")));
       display_device::session_t::get().prepare_vdd(parsed_config, session);
-    }
-
-    if (session.enable_hdr) {
-      std::thread { [&client_name = session.client_name]() {
-        if (!display_device::apply_hdr_profile(client_name)) {
-          BOOST_LOG(warning) << "Failed to apply HDR profile for client: " << client_name << "retrying later...";
-          std::this_thread::sleep_for(2s);
-          display_device::apply_hdr_profile(client_name);
-        }
-      } }
-        .detach();
     }
 
     BOOST_LOG(debug) << "Parsed display device config:\n"
