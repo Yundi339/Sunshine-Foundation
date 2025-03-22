@@ -719,6 +719,33 @@ namespace display_device {
 
   bool
   settings_t::revert_settings() {
+    auto &session = display_device::session_t::get();
+
+    // 检查是否需回退虚拟显示设备
+    if (config::video.preferUseVdd) {
+      // 如果启用了VDD偏好且存在多个显示器，则关闭VDD
+      if (display_device::enum_available_devices().size() > 1 && session.is_display_on()) {
+        BOOST_LOG(info) << "检测到多显示器且VDD已启用，执行关闭操作";
+        session.destroy_vdd_monitor();
+      }
+    }
+    else {
+      // 如果未启用VDD偏好但指定显示器不存在，就创建Zako Monitor
+      const std::string requested_device_id = display_device::find_one_of_the_available_devices(config::video.output_name);
+      if (requested_device_id.empty()) {
+        BOOST_LOG(info) << "VDD偏好未启用且指定显示器不存在，尝试创建显示器";
+        session.create_vdd_monitor();
+
+        // 等待显示器创建完成，后续检测需要
+        constexpr int max_attempts = 5;
+        constexpr auto wait_time = std::chrono::milliseconds(233);
+
+        for (int i = 0; i < max_attempts && !session.is_display_on(); ++i) {
+          std::this_thread::sleep_for(wait_time);
+        }
+      }
+    }
+
     if (!persistent_data) {
       BOOST_LOG(info) << "Loading persistent display device settings.";
       persistent_data = load_settings(filepath);
@@ -733,7 +760,7 @@ namespace display_device {
           save_settings(filepath, *persistent_data);  // Ignoring return value
         }
 
-        BOOST_LOG(error) << "Failed to revert display device settings!";
+        BOOST_LOG(fatal) << "Failed to revert display device settings! 建议立即使用重置记忆术~";
         return false;
       }
 
@@ -746,33 +773,6 @@ namespace display_device {
       }
 
       BOOST_LOG(info) << "Display device configuration reverted.";
-    }
-
-    auto &session = display_device::session_t::get();
-    
-    // 检查是否需回退虚拟显示设备
-    if (config::video.preferUseVdd) {
-      // 如果启用了VDD偏好且存在多个显示器，则关闭VDD
-      if (display_device::enum_available_devices().size() > 1 && session.is_display_on()) {
-        BOOST_LOG(info) << "检测到多显示器且VDD已启用，执行关闭操作";
-        session.destroy_vdd_monitor();
-      }
-    } 
-    else {
-      // 如果未启用VDD偏好但指定显示器不存在，就创建Zako Monitor
-      const auto display_name = display_device::get_display_friendly_name(config::video.output_name);
-      if (display_name.empty()) {
-        BOOST_LOG(info) << "VDD偏好未启用且指定显示器不存在，尝试创建显示器";
-        session.create_vdd_monitor();
-        
-        // 等待显示器创建完成，后续检测需要
-        constexpr int max_attempts = 5;
-        constexpr auto wait_time = std::chrono::milliseconds(233);
-        
-        for (int i = 0; i < max_attempts && !session.is_display_on(); ++i) {
-          std::this_thread::sleep_for(wait_time);
-        }
-      }
     }
 
     return true;

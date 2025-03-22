@@ -280,7 +280,9 @@ namespace display_device {
 
       for (int retry = 1; retry <= 3; ++retry) {
         BOOST_LOG(info) << "正在执行第" << retry << "次VDD恢复尝试...";
-        
+
+
+
         if (!create_vdd_monitor()) {
           BOOST_LOG(error) << "创建虚拟显示器失败，尝试" << retry << "/3";
           if (retry < 3) {
@@ -291,14 +293,14 @@ namespace display_device {
         }
 
         if (vdd_utils::retry_with_backoff(
-          [&device_zako]() {
-            device_zako = display_device::find_device_by_friendlyname(zako_name);
-            return !device_zako.empty();
-          },
-          { .max_attempts = 5,
-            .initial_delay = 233ms,
-            .max_delay = 2000ms,
-            .context = "最终设备检查" })) {
+              [&device_zako]() {
+                device_zako = display_device::find_device_by_friendlyname(zako_name);
+                return !device_zako.empty();
+              },
+              { .max_attempts = 5,
+                .initial_delay = 233ms,
+                .max_delay = 2000ms,
+                .context = "最终设备检查" })) {
           BOOST_LOG(info) << "VDD设备恢复成功！";
           break;
         }
@@ -350,7 +352,11 @@ namespace display_device {
           BOOST_LOG(warning) << "Reverting display settings will still fail - retrying later...";
           return false;
         }
-        return settings.revert_settings();
+
+        // 只恢复一次
+        auto result = settings.revert_settings();
+        BOOST_LOG(info) << "尝试恢复显示设置" << (result ? "成功" : "失败") << "，不再重试";
+        return true;
       });
     }
   }
