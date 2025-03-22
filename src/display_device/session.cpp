@@ -281,6 +281,8 @@ namespace display_device {
       for (int retry = 1; retry <= 3; ++retry) {
         BOOST_LOG(info) << "正在执行第" << retry << "次VDD恢复尝试...";
 
+
+
         if (!create_vdd_monitor()) {
           BOOST_LOG(error) << "创建虚拟显示器失败，尝试" << retry << "/3";
           if (retry < 3) {
