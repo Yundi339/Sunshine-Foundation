@@ -1,4 +1,8 @@
 # Sunshine 基地版
+我入驻原力推了！！
+
+
+[![yuanlitui](https://github.com/Yundi339/Sunshine-Foundation/blob/master/%E5%8E%9F%E5%8A%9B%E6%8E%A8%E5%88%9B%E4%BD%9C%E8%80%85-Yundi339.png)](https://github.com/Yundi339/Sunshine-Foundation/blob/master/%E5%8E%9F%E5%8A%9B%E6%8E%A8%E5%88%9B%E4%BD%9C%E8%80%85-Yundi339.png)
 
 ## 🌐 多语言支持 / Multi-language Support
 
@@ -13,7 +17,6 @@
 </div>
 
 ---
-
 
 基于LizardByte/Sunshine的分支，提供完整的文档支持 [Read the Docs](https://docs.qq.com/aio/DSGdQc3htbFJjSFdO?p=YTpMj5JNNdB5hEKJhhqlSB)。
 
